@@ -8,6 +8,8 @@ Imports System.Linq
 
 'This plugin was written July 2020 by Matthew James for James Gaskin
 'Updated July 2020
+'This plugin was updated 2022 by Joseph Steed
+
 <System.ComponentModel.Composition.Export(GetType(Amos.IPlugin))>
 Public Class CustomCode
     Implements IPlugin
@@ -306,7 +308,7 @@ Public Class CustomCode
         End If
         debug.PrintX("<br>Henseler, J., C. M. Ringle, and M. Sarstedt (2015). A New Criterion for Assessing Discriminant Validity in Variance-based Structural Equation Modeling, Journal of the Academy of Marketing Science, 43 (1), 115-135.")
         debug.PrintX("<hr/><p>--If you would like to cite this tool directly, please use the following:")
-        debug.PrintX("Gaskin, J., James, M., and Lim, J. (2019), ""Master Validity Tool"", AMOS Plugin. <a href=""http://statwiki.kolobkreations.com"">Gaskination's StatWiki</a>.</p>")
+        debug.PrintX("Gaskin, J., James, M., Lim, J, and Steed, J. (2022), ""Master Validity Tool"", AMOS Plugin. <a href=""http://statwiki.gaskination.com"">Gaskination's StatWiki</a>.</p>")
 
         'Write Style And close
         debug.PrintX("<style>h1{margin-left:60px;}table{border:1px solid black;border-collapse:collapse;}td{border:1px solid black;text-align:center;padding:5px;}th{text-weight:bold;padding:10px;border: 1px solid black;}.liberal{background-color: #ec826b;}.strict{background-color: #ffe876b5;}.black{background-color: black;}</style>")
