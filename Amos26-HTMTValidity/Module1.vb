@@ -89,6 +89,8 @@ Public Class CustomCode
 
         'Produces the matrix of estimates and correlations.
         Dim estimateMatrix As Double(,) = GetMatrix()
+        estimateMatrix(1, 5) = 0.1
+        estimateMatrix(6, 10) = 0.1
 
         'Sub procedure to create the output file.
         CreateOutput(estimateMatrix)
@@ -105,6 +107,8 @@ Public Class CustomCode
 
         'Get a list of the latent variables
         Dim latentVariables As ArrayList = GetLatent()
+        'Temp testing of anything in estimate matrix to force things to occur:
+
 
         'Check the matrix for validity concerns
         Dim validityConcerns As ArrayList = checkValidity(estimateMatrix)
@@ -125,13 +129,25 @@ Public Class CustomCode
         Dim resultWriter As New TextWriterTraceListener("MasterValidity.html")
         Trace.Listeners.Add(resultWriter)
 
-        debug.PrintX("<html><body><h1>Model Validity Measures</h1><hr/><h3>Validity Analysis</h3><table><tr><td></td><th>CR</th><th>AVE</th>")
+        debug.PrintX("<html><body><h1>Model Validity Measures</h1><hr/><h3>Validity Analysis[edit-added]</h3>")
+
+        'Optional debug before printing arrays, etc.
+        'debug.PrintX("<p>")
+        'debug.PrintX(estimateMatrix(0, 0))
+        debug.PrintX(estimateMatrix(6, 10))
+        'debug.PrintX(estimateMatrix(0, 0))
+        'debug.PrintX(estimateMatrix(0, 0))
+        'debug.PrintX(estimateMatrix(0, 0))
+        'debug.PrintX(estimateMatrix(0, 0))
+        'debug.PrintX("</p>")
+        'Start table of Validity Analysis
+        debug.PrintX("<table><tr><td></td><th>CR</th><th>AVE</th>")
 
         'Handle zero correlations
         If numCorrelation > 0 Then
             debug.PrintX("<th>MSV</th><th>MaxR(H)</th>")
             For Each latent In latentVariables
-                debug.PrintX("<th>" + latent + "</th>")
+                debug.PrintX("<th>" + latent + "[latent]</th>")
             Next
         Else
             debug.PrintX("<th>MaxR(H)</th>")
@@ -140,18 +156,18 @@ Public Class CustomCode
 
         'Loop through the matrix to output variables, estimates, and correlations
         For y = 0 To latentVariables.Count - 1
-            debug.PrintX("<tr><td><span style='font-weight:bold;'>" + latentVariables(y) + "</span></td>")
+            debug.PrintX("<tr><td><span style='font-weight:bold;'>" + latentVariables(y) + "[ - y]</span></td>")
             For x = 0 To latentVariables.Count + 3
                 Dim significance As String = ""
                 Select Case x
-                    Case 0
+                    Case 0 'This is the first column, the CR column
                         If estimateMatrix(y, x) < 0.7 Or estimateMatrix(y, x) < estimateMatrix(y, (x + 1)) Then
                             debug.PrintX("<td style='color:red'>")
                             bMalhotra = False
                         Else
                             debug.PrintX("<td>")
                         End If
-                    Case 1
+                    Case 1 'This is the second column, the AVE column
                         If estimateMatrix(y, x) < 0.5 Or (estimateMatrix(y, x) < estimateMatrix(y, (x + 1)) And numCorrelation > 1) Then
                             debug.PrintX("<td style='color:red'>")
                             If bMalhotra = True Then
@@ -159,8 +175,10 @@ Public Class CustomCode
                             End If
                         Else
                             debug.PrintX("<td>")
+
                         End If
-                    Case y + 4
+                    Case y + 4 'These are all the cases for the latent variable columns, which line up with the x and y by being four apart.
+                        ' We are assuming there are no errors. 
                         Dim red As Boolean = False
                         For i = 1 To numCorrelation
                             If latentVariables(y) = MatrixName(tableCorrelation, i, 0) Or latentVariables(y) = MatrixName(tableCorrelation, i, 2) Then
@@ -170,13 +188,13 @@ Public Class CustomCode
                             End If
                         Next
                         If red = True And numCorrelation > 0 Then
-                            debug.PrintX("<td><span style='font-weight:bold; color:red;'>")
+                            debug.PrintX("<td><span style='font-weight:bold; color:red;'>") 'This is the diagonal correlation!
                         ElseIf numCorrelation > 0 Then
-                            debug.PrintX("<td><span style='font-weight:bold;'>")
+                            debug.PrintX("<td><span style='font-weight:bold; font-family:arial;'>debug3 x" + x.ToString() + " y" + y.ToString()) 'This is the diagonal correlation!
                         End If
-                    Case 2
+                    Case 2 'This is the third column, MSV. There is no red checks on here, so nothing needed
                         debug.PrintX("<td>")
-                    Case 3
+                    Case 3 'This is the fourth column, MaxR(H), there is no red checks here, so nothing needed
                         If numCorrelation > 0 Then
                             debug.PrintX("<td>")
                         End If
@@ -204,11 +222,11 @@ Public Class CustomCode
                 End Select
 
                 If x <= 2 Then
-                    debug.PrintX(estimateMatrix(y, x).ToString("#0.000") + "</span></td>")
+                    debug.PrintX(estimateMatrix(y, x).ToString("#0.000") + "[x is ltet 2]</span></td>")
                 ElseIf x > 2 And estimateMatrix(y, x) <> 0 And numCorrelation > 0 And y + 4 >= x Then
-                    debug.PrintX(estimateMatrix(y, x).ToString("#0.000") + significance + "</span></td>")
+                    debug.PrintX(estimateMatrix(y, x).ToString("#0.000") + significance + "[x is mt 2]</span></td>")
                 ElseIf x > 2 And numCorrelation > 0 And estimateMatrix(y, x) = 0 And y + 4 > x Then
-                    debug.PrintX("&#8258</td>")
+                    debug.PrintX("----</td>")
                     missingCorrelation = True
                 Else
                     debug.PrintX("</td>")
@@ -237,9 +255,9 @@ Public Class CustomCode
         debug.PrintX("<h3>Validity Analysis - Confidence Intervals</h3><table><tr><td></td><th>CR</th><th>AVE</th><th>Lower 95% CR</th><th>Upper 95% CR</th><th>Lower 95% AVE</th><th>Upper 95% AVE</th>")
 
         For y = 0 To latentVariables.Count - 1
-            debug.PrintX("</tr><tr><td><span style='font-weight:bold;'>" + latentVariables(y) + "</span></td>")
+            debug.PrintX("</tr><tr><td><span style='font-weight:bold;'>" + latentVariables(y) + "[debug1]</span></td>")
             For x = 0 To 5
-                debug.PrintX("<td>" + estimateMatrix(y + latentVariables.Count, x).ToString("#0.000") + "</span></td>")
+                debug.PrintX("<td>" + estimateMatrix(y + latentVariables.Count, x).ToString("#0.000") + "[debug2]</span></td>")
             Next
         Next
 
@@ -486,7 +504,7 @@ Public Class CustomCode
                             End If
                         End If
 
-                        If estimateMatrix(y, x) < estimateMatrix(y, x + 1) And numCorrelation > 1 Then 'Check if AVE is less than MSV.
+                        If Math.Abs(estimateMatrix(y, x)) < Math.Abs(estimateMatrix(y, x + 1)) And numCorrelation > 1 Then 'Check if AVE is less than MSV.
                             tempMessage = "Discriminant Validity: the AVE for " & latentVariables(y) & " is less than the MSV."
                             If Not validityMessages.Contains(tempMessage) Then
                                 validityMessages.Add(tempMessage)
@@ -498,14 +516,14 @@ Public Class CustomCode
                 'Only check latent variables that are correlated
                 For i = 1 To numCorrelation
                     If latentVariables(y) = MatrixName(tableCorrelation, i, 0) Then
-                        If Math.Sqrt(estimateMatrix(y, x)) < MatrixElement(tableCorrelation, i, 3) Then 'Check if the square root of AVE is less than the correlation.
+                        If Math.Sqrt(Math.Abs(estimateMatrix(y, x))) < Math.Abs(MatrixElement(tableCorrelation, i, 3)) Then 'Check if the square root of AVE is less than the correlation.
                             tempMessage = "Discriminant Validity: the square root of the AVE for " & latentVariables(y) & " is less than its correlation with " & MatrixName(tableCorrelation, i, 2) & "."
                             If Not validityMessages.Contains(tempMessage) Then
                                 validityMessages.Add(tempMessage)
                             End If
                         End If
                     ElseIf latentVariables(y) = MatrixName(tableCorrelation, i, 2) Then
-                        If Math.Sqrt(estimateMatrix(y, x)) < MatrixElement(tableCorrelation, i, 3) Then
+                        If Math.Sqrt(Math.Abs(estimateMatrix(y, x))) < Math.Abs(MatrixElement(tableCorrelation, i, 3)) Then
                             tempMessage = "Discriminant Validity: the square root of the AVE for " & latentVariables(y) & " is less than its correlation with " & MatrixName(tableCorrelation, i, 0) & "."
                             If Not validityMessages.Contains(tempMessage) Then
                                 validityMessages.Add(tempMessage)
