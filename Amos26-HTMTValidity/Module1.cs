@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 #region Imports
 using System.Diagnostics;
+using System.IO;
 using System.Xml;
 using Amos;
 using Amos26_HTMTValidity;
@@ -15,11 +16,13 @@ namespace Amos26_HTMTValidity
 
     // This plugin was written July 2020 by Matthew James for James Gaskin
     // Updated July 2020
-    // This plugin was updated 2022 by Joseph Steed
+    // This plugin was updated 2023 by Joseph Steed
 
     [System.ComponentModel.Composition.Export(typeof(IPlugin))]
     public class CustomCode : IPlugin
     {
+        // Easy system to just call debugMode = true to allow a bunch of debugging output occur. 
+        private Boolean debugMode = false;
 
         private ArrayList HigherOrderVariables = new ArrayList();
 
@@ -109,9 +112,19 @@ namespace Amos26_HTMTValidity
             // Produces the matrix of estimates and correlations.
             var estimateMatrix = GetMatrix();
             // If you want to test explicit values with a dataset, you can change the values here, as shown below
-            //estimateMatrix[1, 5] = 0.1d;
-            //estimateMatrix[6, 10] = 0.1d;
+            if (debugMode)
+            {
+                Interaction.MsgBox("matrix obtained.");
+                // todo fixme replace below when errors are deleted??
 
+                //Interaction.MsgBox(Util.print2DArray(estimateMatrix));
+
+                //estimateMatrix[3, 7] = .00000000001d;
+                ////estimateMatrix[6, 9] = .99d;
+                //Interaction.MsgBox(Util.print2DArray(estimateMatrix));
+
+                //Interaction.MsgBox("matrix modified.");
+            }
             // Sub procedure to create the output file.
             CreateOutput(estimateMatrix);
             return default;
@@ -126,7 +139,13 @@ namespace Amos26_HTMTValidity
             var tableCorrelation = Util.GetXML("body/div/div[@ntype='models']/div[@ntype='model'][position() = 1]/div[@ntype='group'][position() = 1]/div[@ntype='estimates']/div[@ntype='scalars']/div[@nodecaption='Correlations:']/table/tbody");
             var tableCovariance = Util.GetXML("body/div/div[@ntype='models']/div[@ntype='model'][position() = 1]/div[@ntype='group'][position() = 1]/div[@ntype='estimates']/div[@ntype='scalars']/div[@nodecaption='Covariances:']/table/tbody");
             int numCorrelation = Util.GetNodeCount(tableCorrelation);
-
+            if (debugMode)
+            {
+                //Interaction.MsgBox("Table Correlation being displayed:");
+                //Interaction.MsgBox(tableCorrelation.InnerXml);
+                File.WriteAllText("amos_debug.txt", tableCorrelation.InnerXml);
+                //Interaction.MsgBox(tableCorrelation.ToString());
+            }
             // Get a list of the latent variables
             var latentVariables = GetLatent();
             // Temp testing of anything in estimate matrix to force things to occur:
@@ -151,13 +170,13 @@ namespace Amos26_HTMTValidity
             // File the output will be written to
             var resultWriter = new TextWriterTraceListener("MasterValidity.html");
             Trace.Listeners.Add(resultWriter);
-
-            debug.PrintX("<html><body><h1>Model Validity Measures</h1><hr/><h3>Validity Analysis[edit-added]</h3>");
+            
+            debug.PrintX("<html><body><h1>Model Validity Measures</h1><hr/><h3>Validity Analysis</h3>");
 
             // Optional debug before printing arrays, etc.
             // debug.PrintX("<p>")
             // debug.PrintX(estimateMatrix(0, 0))
-            debug.PrintX(estimateMatrix[6, 10]);
+            //debug.PrintX(estimateMatrix[6, 10]);
             // debug.PrintX(estimateMatrix(0, 0))
             // debug.PrintX(estimateMatrix(0, 0))
             // debug.PrintX(estimateMatrix(0, 0))
@@ -171,7 +190,7 @@ namespace Amos26_HTMTValidity
             {
                 debug.PrintX("<th>MSV</th><th>MaxR(H)</th>");
                 foreach (var latent in latentVariables)
-                    debug.PrintX("<th>" + latent + "[latent]</th>");
+                    debug.PrintX("<th>" + latent + "</th>");
             }
             else
             {
@@ -182,7 +201,12 @@ namespace Amos26_HTMTValidity
             // Loop through the matrix to output variables, estimates, and correlations
             for (int y = 0, loopTo = latentVariables.Count - 1; y <= loopTo; y++)
             {
-                debug.PrintX("<tr><td><span style='font-weight:bold;'>" + latentVariables[y] + "[ - y]</span></td>");
+                debug.PrintX("<tr><td><span style='font-weight:bold;'>" + latentVariables[y]);
+                if (debugMode)
+                {
+                    debug.PrintX("[ - y]");
+                }
+                debug.PrintX("</span></td>");
                 for (int x = 0, loopTo1 = latentVariables.Count + 3; x <= loopTo1; x++)
                 {
                     string significance = "";
@@ -215,7 +239,6 @@ namespace Amos26_HTMTValidity
                                 else
                                 {
                                     debug.PrintX("<td>");
-
                                 }
 
                                 break;
@@ -228,19 +251,43 @@ namespace Amos26_HTMTValidity
                                 {
                                     if (Conversions.ToBoolean(Operators.OrObject(Operators.ConditionalCompareObjectEqual(latentVariables[y], Util.MatrixName(tableCorrelation, i, 0L), false), Operators.ConditionalCompareObjectEqual(latentVariables[y], Util.MatrixName(tableCorrelation, i, 2L), false))))
                                     {
-                                        if (Math.Sqrt(estimateMatrix[y, x]) < Util.MatrixElement(tableCorrelation, i, 3L))
+                                        if (debugMode)
                                         {
+                                            if (latentVariables[y].ToString() == "Playful")
+                                            {
+                                                Interaction.MsgBox(
+                                                     "Checking to make diagonal red for " + latentVariables[y].ToString() + " true?: " +
+                                                     (estimateMatrix[y, x] < Math.Abs(Util.MatrixElement(tableCorrelation, i, 3L)))
+                                                     + "\n" 
+                                                     + "estimateMatrix: " + estimateMatrix[y, x] + "\n" +
+                                                     "tableCorrelation: " 
+                                                     + Math.Abs(Util.MatrixElement(tableCorrelation, i, 3L))
+                                                 );
+                                            }
+                                        }
+                                        if (estimateMatrix[y, x] < Math.Abs(Util.MatrixElement(tableCorrelation, i, 3L)))
+                                        {
+                                            if (debugMode)
+                                            {
+                                                Interaction.MsgBox("Red true assigned for latent variable" + latentVariables[y].ToString());
+                                            }
                                             red = true;
                                         }
                                     }
                                 }
+                                string debugThing = "";
+                                if (debugMode)
+                                {
+                                    debugThing = "debug3 x" + x.ToString() + " y" + y.ToString();
+                                }
                                 if (red == true & numCorrelation > 0)
                                 {
-                                    debug.PrintX("<td><span style='font-weight:bold; color:red;'>"); // This is the diagonal correlation!
+                                    debug.PrintX("<td><span style='font-weight:bold; color:red;'>" + debugThing); // This is the diagonal correlation!
                                 }
                                 else if (numCorrelation > 0)
                                 {
-                                    debug.PrintX("<td><span style='font-weight:bold; font-family:arial;'>debug3 x" + x.ToString() + " y" + y.ToString()); // This is the diagonal correlation!
+                                    
+                                    debug.PrintX("<td><span style='font-weight:bold; font-family:arial;'>" + debugThing); // This is the diagonal correlation!
                                 }
 
                                 break;
@@ -296,14 +343,21 @@ namespace Amos26_HTMTValidity
                                 break;
                             }
                     }
+                    string valDebug1 = "";
+                    string valDebug2 = "";
+                    if (debugMode)
+                    {
+                        valDebug1 = "[x is ltet 2]";
+                        valDebug2 = "[x is mt 2]";
+                    }
 
                     if (x <= 2)
                     {
-                        debug.PrintX(estimateMatrix[y, x].ToString("#0.000") + "[x is ltet 2]</span></td>");
+                        debug.PrintX(estimateMatrix[y, x].ToString("#0.000") + valDebug1 + "</span></td>");
                     }
                     else if (x > 2 & estimateMatrix[y, x] != 0d & numCorrelation > 0 & y + 4 >= x)
                     {
-                        debug.PrintX(estimateMatrix[y, x].ToString("#0.000") + significance + "[x is mt 2]</span></td>");
+                        debug.PrintX(estimateMatrix[y, x].ToString("#0.000") + significance + valDebug2 + "</span></td>");
                     }
                     else if (x > 2 & numCorrelation > 0 & estimateMatrix[y, x] == 0d & y + 4 > x)
                     {
@@ -340,11 +394,18 @@ namespace Amos26_HTMTValidity
             // Print confidence intervals
             debug.PrintX("<h3>Validity Analysis - Confidence Intervals</h3><table><tr><td></td><th>CR</th><th>AVE</th><th>Lower 95% CR</th><th>Upper 95% CR</th><th>Lower 95% AVE</th><th>Upper 95% AVE</th>");
 
+            string tabledebug1 = "";
+            string tabledebug2 = "";
+            if (debugMode)
+            {
+                tabledebug1 = "[debug1]";
+                tabledebug2 = "[debug2]";
+            }
             for (int y = 0, loopTo4 = latentVariables.Count - 1; y <= loopTo4; y++)
             {
-                debug.PrintX("</tr><tr><td><span style='font-weight:bold;'>" + latentVariables[y] + "[debug1]</span></td>");
+                debug.PrintX("</tr><tr><td><span style='font-weight:bold;'>" + latentVariables[y] + "</span></td>");
                 for (int x = 0; x <= 5; x++)
-                    debug.PrintX("<td>" + estimateMatrix[y + latentVariables.Count, x].ToString("#0.000") + "[debug2]</span></td>");
+                    debug.PrintX("<td>" + estimateMatrix[y + latentVariables.Count, x].ToString("#0.000") + "</span></td>");
             }
 
             debug.PrintX("</tr></table><br>");
@@ -421,7 +482,7 @@ namespace Amos26_HTMTValidity
             }
             debug.PrintX("<br>Henseler, J., C. M. Ringle, and M. Sarstedt (2015). A New Criterion for Assessing Discriminant Validity in Variance-based Structural Equation Modeling, Journal of the Academy of Marketing Science, 43 (1), 115-135.");
             debug.PrintX("<hr/><p>--If you would like to cite this tool directly, please use the following:");
-            debug.PrintX("Gaskin, J., James, M., Lim, J, and Steed, J. (2022), \"Master Validity Tool\", AMOS Plugin. <a href=\"http://statwiki.gaskination.com\">Gaskination's StatWiki</a>.</p>");
+            debug.PrintX("Gaskin, J., James, M., Lim, J, and Steed, J. (2023), \"Master Validity Tool\", AMOS Plugin. <a href=\"http://statwiki.gaskination.com\">Gaskination's StatWiki</a>.</p>");
 
             // Write Style And close
             debug.PrintX("<style>h1{margin-left:60px;}table{border:1px solid black;border-collapse:collapse;}td{border:1px solid black;text-align:center;padding:5px;}th{text-weight:bold;padding:10px;border: 1px solid black;}.liberal{background-color: #ec826b;}.strict{background-color: #ffe876b5;}.black{background-color: black;}</style>");
@@ -496,7 +557,7 @@ namespace Amos26_HTMTValidity
                     {
                         foreach (var indicator2 in indicators2)
                         {
-                            if (Conversions.ToBoolean(Operators.ConditionalCompareObjectNotEqual(indicator1, indicator2, false)))
+                            if (indicator1 != indicator2)
                             {
                                 htmtSum = htmtSum + smpCorrelation[Conversions.ToString(Operators.AddObject(indicator1, indicator2))]; // Wrapped in Try-Catch Because We Only Stored Unique Pairings. Sums All Indicator Pairs Together Then Takes Average
                                 htmtCount = htmtCount + 1;
@@ -533,7 +594,7 @@ namespace Amos26_HTMTValidity
         // Creates an arraylist of recommendations to improve the model.
         public ArrayList checkValidity(double[,] estimateMatrix)
         {
-
+            int here = estimateMatrix.Length;
             var validityMessages = new ArrayList(); // The list of messages.
             var latentVariables = GetLatent(); // The list of latent variables
                                                // Xml tables used to check estimates and number of rows.
@@ -541,23 +602,28 @@ namespace Amos26_HTMTValidity
             var tableRegression = Util.GetXML("body/div/div[@ntype='models']/div[@ntype='model'][position() = 1]/div[@ntype='group'][position() = 1]/div[@ntype='estimates']/div[@ntype='scalars']/div[@nodecaption='Standardized Regression Weights:']/table/tbody");
             int numCorrelation = Util.GetNodeCount(tableCorrelation);
             int numRegression = Util.GetNodeCount(tableRegression);
-
+            if (debugMode)
+            {
+                Interaction.MsgBox("Number of latentVariables to loop through: " + latentVariables.Count.ToString());
+                Interaction.MsgBox("Number of regressions to loop through: " + numRegression.ToString());
+                Interaction.MsgBox("Number of correlations to loop through: " + numCorrelation.ToString());
+            }
             // Variables
             int numIndicator = 0; // Temp variable to check if more than two indicators on a latent.
             bool bMalhotra = true; // Malhotra is only used for certain conditions
             string tempMessage = ""; // Temp variable to check if the message already exists.
             string sMalhotra = "";
-
+             
             // Based only on the variables in the correlations table
-            for (int y = 0, loopTo = latentVariables.Count - 1; y <= loopTo; y++)
+            for (int y_index_of_latentVariables = 0, loopTo = latentVariables.Count - 1; y_index_of_latentVariables <= loopTo; y_index_of_latentVariables++)
             {
                 double indicatorVal = 2d;
                 double indicatorTest = 0d;
                 string indicatorName = "";
 
-                for (int i = 1, loopTo1 = numRegression; i <= loopTo1; i++)
+                for (int i_standardRegressions_morethanlatent = 1, loopTo1 = numRegression; i_standardRegressions_morethanlatent <= loopTo1; i_standardRegressions_morethanlatent++)
                 {
-                    if (Conversions.ToBoolean(Operators.ConditionalCompareObjectEqual(latentVariables[y], Util.MatrixName(tableRegression, i, 2L), false)))
+                    if (Conversions.ToBoolean(Operators.ConditionalCompareObjectEqual(latentVariables[y_index_of_latentVariables], Util.MatrixName(tableRegression, i_standardRegressions_morethanlatent, 2L), false)))
                     {
                         numIndicator += 1;
                     }
@@ -567,7 +633,7 @@ namespace Amos26_HTMTValidity
                 {
                     for (int i = 1, loopTo2 = numRegression; i <= loopTo2; i++)
                     {
-                        if (Conversions.ToBoolean(Operators.ConditionalCompareObjectEqual(latentVariables[y], Util.MatrixName(tableRegression, i, 2L), false)))
+                        if (Conversions.ToBoolean(Operators.ConditionalCompareObjectEqual(latentVariables[y_index_of_latentVariables], Util.MatrixName(tableRegression, i, 2L), false)))
                         {
                             indicatorTest = Util.MatrixElement(tableRegression, i, 3L);
                             if (indicatorTest < indicatorVal) // Look for the lowest indicator.
@@ -579,14 +645,14 @@ namespace Amos26_HTMTValidity
                     }
                 }
 
-                for (int x = 0; x <= 3; x++)
+                for (int x_range0to3_4numbers = 0; x_range0to3_4numbers <= 3; x_range0to3_4numbers++)
                 {
-                    if (x == 0 & estimateMatrix[y, x] < 0.7d)
+                    if (x_range0to3_4numbers == 0 & estimateMatrix[y_index_of_latentVariables, x_range0to3_4numbers] < 0.7d)
                     {
                         bMalhotra = false;
                         if (numIndicator > 2) // Find the LOWEST indicator
                         {
-                            tempMessage = Conversions.ToString("Reliability: the CR for " + latentVariables[y] + " is less than 0.70. Try removing " + indicatorName + " to improve CR.");
+                            tempMessage = Conversions.ToString("Reliability: the CR for " + latentVariables[y_index_of_latentVariables] + " is less than 0.70. Try removing " + indicatorName + " to improve CR.");
                             if (!validityMessages.Contains(tempMessage))
                             {
                                 validityMessages.Add(tempMessage);
@@ -594,24 +660,24 @@ namespace Amos26_HTMTValidity
                         }
                         else
                         {
-                            tempMessage = Conversions.ToString("Reliability: the CR for " + latentVariables[y] + " is less than 0.70. No way to improve CR because you only have two indicators for that variable. Removing one indicator will make this not latent.");
+                            tempMessage = Conversions.ToString("Reliability: the CR for " + latentVariables[y_index_of_latentVariables] + " is less than 0.70. No way to improve CR because you only have two indicators for that variable. Removing one indicator will make this not latent.");
                             if (!validityMessages.Contains(tempMessage))
                             {
                                 validityMessages.Add(tempMessage);
                             }
                         }
-                        if (estimateMatrix[y, x] < estimateMatrix[y, x + 1])
+                        if (estimateMatrix[y_index_of_latentVariables, x_range0to3_4numbers] < estimateMatrix[y_index_of_latentVariables, x_range0to3_4numbers + 1])
                         {
-                            tempMessage = Conversions.ToString("Convergent Validity: the CR for " + latentVariables[y] + " is less than the AVE.");
+                            tempMessage = Conversions.ToString("Convergent Validity: the CR for " + latentVariables[y_index_of_latentVariables] + " is less than the AVE.");
                             if (!validityMessages.Contains(tempMessage))
                             {
                                 validityMessages.Add(tempMessage);
                             }
                         }
                     }
-                    else if (x == 1)
+                    else if (x_range0to3_4numbers == 1)
                     {
-                        if (estimateMatrix[y, x] < 0.5d)
+                        if (estimateMatrix[y_index_of_latentVariables, x_range0to3_4numbers] < 0.5d)
                         {
                             if (bMalhotra == true)
                             {
@@ -619,7 +685,7 @@ namespace Amos26_HTMTValidity
                             }
                             if (numIndicator > 2)
                             {
-                                tempMessage = Conversions.ToString(sMalhotra + "Convergent Validity: the AVE for " + latentVariables[y] + " is less than 0.50. Try removing " + indicatorName) + " to improve AVE.";
+                                tempMessage = Conversions.ToString(sMalhotra + "Convergent Validity: the AVE for " + latentVariables[y_index_of_latentVariables] + " is less than 0.50. Try removing " + indicatorName) + " to improve AVE.";
                                 if (!validityMessages.Contains(tempMessage))
                                 {
                                     validityMessages.Add(tempMessage);
@@ -627,47 +693,75 @@ namespace Amos26_HTMTValidity
                             }
                             else
                             {
-                                tempMessage = Conversions.ToString(sMalhotra + "Convergent Validity: the AVE for " + latentVariables[y] + " is less than 0.50. No way to improve AVE because you only have two indicators for that variable. Removing one indicator will make this not latent.");
+                                tempMessage = Conversions.ToString(sMalhotra + "Convergent Validity: the AVE for " + latentVariables[y_index_of_latentVariables] + " is less than 0.50. No way to improve AVE because you only have two indicators for that variable. Removing one indicator will make this not latent.");
                                 if (!validityMessages.Contains(tempMessage))
                                 {
                                     validityMessages.Add(tempMessage);
                                 }
                             }
 
-                            if (Math.Abs(estimateMatrix[y, x]) < Math.Abs(estimateMatrix[y, x + 1]) & numCorrelation > 1) // Check if AVE is less than MSV.
+                            if (Math.Abs(estimateMatrix[y_index_of_latentVariables, x_range0to3_4numbers]) < Math.Abs(estimateMatrix[y_index_of_latentVariables, x_range0to3_4numbers + 1]) & numCorrelation > 1) // Check if AVE is less than MSV.
                             {
-                                tempMessage = Conversions.ToString("Discriminant Validity: the AVE for " + latentVariables[y] + " is less than the MSV.");
+                                tempMessage = Conversions.ToString("Discriminant Validity: the AVE for " + latentVariables[y_index_of_latentVariables] + " is less than the MSV.");
                                 if (!validityMessages.Contains(tempMessage))
                                 {
                                     validityMessages.Add(tempMessage);
                                 }
+                            }
+                        }
+                    }                    
+                }
+                //if (debugMode)
+                //{
+                //    Interaction.MsgBox("Number of correlations to loop through: " + numCorrelation.ToString());
+                //}
+                // Only check latent variables that are correlated
+                for (int i = 1; i <= numCorrelation; i++)
+                {
+                    //if (debugMode)
+                    //{
+                    //    Interaction.MsgBox("Correlation number " + i.ToString());
+                    //}
+                    if (latentVariables[y_index_of_latentVariables].ToString() == Util.MatrixName(tableCorrelation, i, 0L).ToString())
+                    {
+                        //if (debugMode)
+                        //{
+                        //    Interaction.MsgBox("Here, matched the latent variable in the correlation table");
+                        //}
+
+                        //goto fix of abs check, etc...
+
+                        // if the square root of the ave (the diagonal)
+
+                        if (Math.Abs(estimateMatrix[y_index_of_latentVariables, y_index_of_latentVariables + 4]) < Math.Abs(Util.MatrixElement(tableCorrelation, i, 3L))) // Check if the square root of AVE is less than the correlation.
+                        {
+                            if (debugMode)
+                            {
+                                Interaction.MsgBox("Error added for " + latentVariables[y_index_of_latentVariables].ToString());
+                            }
+                            tempMessage = "Discriminant Validity: the square root of the AVE for " + latentVariables[y_index_of_latentVariables] + " is less than the absolute value of its correlation with " + Util.MatrixName(tableCorrelation, i, 2L) + ".";
+                            if (!validityMessages.Contains(tempMessage))
+                            {
+                                validityMessages.Add(tempMessage);
                             }
                         }
                     }
-
-                    // Only check latent variables that are correlated
-                    for (int i = 1, loopTo3 = numCorrelation; i <= loopTo3; i++)
+                    else if (latentVariables[y_index_of_latentVariables].ToString() == Util.MatrixName(tableCorrelation, i, 2L).ToString())
                     {
-                        if (Conversions.ToBoolean(Operators.ConditionalCompareObjectEqual(latentVariables[y], Util.MatrixName(tableCorrelation, i, 0L), false)))
+                        //if (debugMode)
+                        //{
+                        //    Interaction.MsgBox("Here, matched the latent variable in the correlation table");
+                        //}
+                        if (Math.Abs(estimateMatrix[y_index_of_latentVariables, y_index_of_latentVariables + 4]) < Math.Abs(Util.MatrixElement(tableCorrelation, i, 3L))) // Check if the square root of AVE is less than the correlation.
                         {
-                            if (Math.Sqrt(Math.Abs(estimateMatrix[y, x])) < Math.Abs(Util.MatrixElement(tableCorrelation, i, 3L))) // Check if the square root of AVE is less than the correlation.
+                            if (debugMode)
                             {
-                                tempMessage = Conversions.ToString("Discriminant Validity: the square root of the AVE for " + latentVariables[y] + " is less than its correlation with " + Util.MatrixName(tableCorrelation, i, 2L)) + ".";
-                                if (!validityMessages.Contains(tempMessage))
-                                {
-                                    validityMessages.Add(tempMessage);
-                                }
+                                Interaction.MsgBox("Error added for " + latentVariables[y_index_of_latentVariables].ToString());
                             }
-                        }
-                        else if (Conversions.ToBoolean(Operators.ConditionalCompareObjectEqual(latentVariables[y], Util.MatrixName(tableCorrelation, i, 2L), false)))
-                        {
-                            if (Math.Sqrt(Math.Abs(estimateMatrix[y, x])) < Math.Abs(Util.MatrixElement(tableCorrelation, i, 3L)))
+                            tempMessage = "Discriminant Validity: the square root of the AVE for " + latentVariables[y_index_of_latentVariables] + " is less than the absolute value of its correlation with " + Util.MatrixName(tableCorrelation, i, 0L) + ".";
+                            if (!validityMessages.Contains(tempMessage))
                             {
-                                tempMessage = Conversions.ToString("Discriminant Validity: the square root of the AVE for " + latentVariables[y] + " is less than its correlation with " + Util.MatrixName(tableCorrelation, i, 0L) + ".");
-                                if (!validityMessages.Contains(tempMessage))
-                                {
-                                    validityMessages.Add(tempMessage);
-                                }
+                                validityMessages.Add(tempMessage);
                             }
                         }
                     }
@@ -805,7 +899,34 @@ namespace Amos26_HTMTValidity
 
         }
 
-        // Matrix that holds the estimates for each latent variable.
+        /** Matrix that holds the estimates for each latent variable.
+         * 
+         * The total number of rows is double the number of latent variables. This is because the 
+         * first set of rows are have some estimates with the correlations between
+         * different latent variables. 
+         * 
+         * The first set of rows (one for each latent) has the following columns in order:
+         * 1. CR
+         * 2. AVE
+         * 3. MSV
+         * 4. MaxR(H)
+         * 5+. The correlations between various variables, and if it is calculating the correlation with itself, 
+         * it is simply the squareroot of the AVE. This would look like: 
+         * latent1 row: CR, AVE, MSV, MaxR(H), Sqrt(AVE for latent 1), latent1 correlated with latent 2, latent 1 correlation with latent  
+         * latent2 row: CR, AVE, MSV, MaxR(H), latent1 correlated with latent 2, Sqrt(AVE), latent 1 correlation with latent  
+         * 
+         * The second set of rows have important estimates in it: specifically in order from left to right 
+         * (columns, one row for each latent variable):
+         *      estimateMatrix[matrixRow + numLatentVariables, 0] = estimates.CR;
+                estimateMatrix[matrixRow + numLatentVariables, 1] = estimates.AVE;
+                estimateMatrix[matrixRow + numLatentVariables, 2] = estimates.LCR;
+                estimateMatrix[matrixRow + numLatentVariables, 3] = estimates.UCR;
+                estimateMatrix[matrixRow + numLatentVariables, 4] = estimates.LAVE;
+                estimateMatrix[matrixRow + numLatentVariables, 5] = estimates.UAVE;
+         * 
+         * 
+         * 
+        */
         double[,] GetMatrix()
         {
 
@@ -813,13 +934,13 @@ namespace Amos26_HTMTValidity
             var tableCorrelation = Util.GetXML("body/div/div[@ntype='models']/div[@ntype='model'][position() = 1]/div[@ntype='group'][position() = 1]/div[@ntype='estimates']/div[@ntype='scalars']/div[@nodecaption='Correlations:']/table/tbody");
             // Count of elements in the correlation table
             int numCorrelation = Util.GetNodeCount(tableCorrelation);
-
+            
             // Get an array with the names of the latent variables.
             var latentVariables = GetLatent();
             int numLatentVariables = latentVariables.Count;
 
             // Declare a two dimensional array to hole the estimates.
-            var estimateMatrix = new double[numLatentVariables * 2 - 1 + 1, latentVariables.Count + 3 + 1];
+            var estimateMatrix = new double[numLatentVariables * 2, latentVariables.Count + 3 + 1];
 
             // Catch if there is only one latent in the model.
             CheckSingleLatent(latentVariables.Count);
@@ -854,16 +975,18 @@ namespace Amos26_HTMTValidity
                                 if (Conversions.ToBoolean(Operators.ConditionalCompareObjectEqual(latentVariables[index], Util.MatrixName(tableCorrelation, i, 0L), false)))
                                 {
                                     // Catches an output table exception where the variable is only listed on one side.
-                                    if (index + 4 > latentVariables.IndexOf(latent) + 4 & Util.MatrixElement(tableCorrelation, i, 3L) > 0d)
-                                    {
-                                        estimateMatrix[index, matrixRow + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
-                                        estimateMatrix[matrixRow, index + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
-                                    }
-                                    else
-                                    {
-                                        estimateMatrix[index, matrixRow + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
-                                        estimateMatrix[matrixRow, index + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
-                                    }
+                                    //if (index + 4 > latentVariables.IndexOf(latent) + 4 & Util.MatrixElement(tableCorrelation, i, 3L) > 0d)
+                                    //{
+                                    //    estimateMatrix[index, matrixRow + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
+                                    //    estimateMatrix[matrixRow, index + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
+                                    //}
+                                    //else
+                                    //{
+                                    //    estimateMatrix[index, matrixRow + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
+                                    //    estimateMatrix[matrixRow, index + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
+                                    //}
+                                    estimateMatrix[index, matrixRow + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
+                                    estimateMatrix[matrixRow, index + 4] = Util.MatrixElement(tableCorrelation, i, 3L);
                                 }
                             }
                             if (Conversions.ToBoolean(Operators.ConditionalCompareObjectEqual(latent, latentVariables[matrixRow], false)))

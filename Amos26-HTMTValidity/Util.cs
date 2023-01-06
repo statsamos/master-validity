@@ -139,5 +139,24 @@ namespace Amos26_HTMTValidity
 
             return default;
         }
+
+        // https://stackoverflow.com/questions/24094093/how-to-print-2d-array-to-console-in-c-sharp
+        /**
+         * prints a td array (returns the string for you
+         */
+        public static string print2DArray<T>(T[,] matrix)
+        {
+            string rString = "";
+            for (int i = 0; i < matrix.GetLength(0); i++)
+            {
+                for (int j = 0; j < matrix.GetLength(1); j++)
+                {
+                    rString += (j.ToString() + " " + matrix[i, j] + "\t");
+                }
+                rString += "\n\n";
+            }
+            return rString;
+        }
+
     }
 }
